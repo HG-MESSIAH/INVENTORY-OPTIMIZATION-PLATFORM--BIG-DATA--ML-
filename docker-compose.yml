@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  inventory-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: inventory-intelligence:1.0.0
+    container_name: inventory_platform
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - STREAMLIT_SERVER_MAX_UPLOAD_SIZE=200
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - ./data:/app/data          # optional: mount external data
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G
+        reservations:
+          cpus: "1"
+          memory: 2G
