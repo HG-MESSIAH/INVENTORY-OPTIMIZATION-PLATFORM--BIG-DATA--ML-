@@ -1,25 +1,8 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# requirements.txt
-# Inventory Optimization — Demand Forecasting Framework
-# Tested on Python 3.11 | RHEL 10 compatible
-# ─────────────────────────────────────────────────────────────────────────────
-
-# ── Core scientific stack ─────────────────────────────────────────────────────
-numpy==1.26.4
-pandas==2.2.2
-scipy==1.13.1
-
-# ── Time-series models ────────────────────────────────────────────────────────
-statsmodels==0.14.2          # ARIMA + Holt-Winters
-
-# ── Gradient boosting ─────────────────────────────────────────────────────────
-xgboost==2.0.3
-scikit-learn==1.5.0
-
-# ── Dashboard ─────────────────────────────────────────────────────────────────
-streamlit==1.35.0
-plotly==5.22.0
-
-# ── Utilities ─────────────────────────────────────────────────────────────────
-python-dateutil==2.9.0
-pytz==2024.1
+streamlit
+pandas
+numpy
+scikit-learn
+xgboost
+statsmodels
+plotly
+matplotlib
