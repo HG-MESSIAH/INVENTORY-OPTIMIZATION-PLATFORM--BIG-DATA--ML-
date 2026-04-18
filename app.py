@@ -144,8 +144,8 @@ with st.sidebar:
     st.markdown("## ⚙️ Configuration")
     st.divider()
 
-    n_products = st.slider("Products to model", 5, 50, 15, 5)
-    n_weeks    = st.selectbox("History (weeks)", [52, 78, 104], index=1)
+    n_products = st.slider("Products to model", 5, 50, 5, 5)
+    n_weeks    = st.selectbox("History (weeks)", [52, 78, 104], index=0)
     service_level = st.slider("Target service level", 0.85, 0.99, 0.95, 0.01)
 
     st.divider()
