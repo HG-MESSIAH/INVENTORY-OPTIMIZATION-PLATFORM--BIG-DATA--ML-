@@ -174,11 +174,11 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-if "results" not in st.session_state:
+if not run_btn and "results" not in st.session_state:
     st.info("👈 Configure parameters in the sidebar and click **Run Analysis** to begin.")
     st.stop()
 
-if run_btn or "results" not in st.session_state:
+if run_btn:
     with st.spinner("🔄 Running forecasting engine — this may take 30–60 seconds …"):
         st.session_state["results"] = run_engine(n_products, n_weeks)
 
