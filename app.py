@@ -8,6 +8,8 @@ Tracks: 10–15% holding-cost reduction | 20%+ stockout reduction
 import warnings
 warnings.filterwarnings("ignore")
 
+import os
+import requests
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -22,6 +24,34 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ── Auto-download data files from Google Drive ───────────────
+DRIVE_FILES = {
+    "sales_train_evaluation.csv": "1_3-2JkW8gxHBUf9EXuH6k399_8-jMonh",
+    "calendar.csv":               "1YATfYtfwx7XOImvU4ciSNPgZhrgX5UFN",
+    "sell_prices.csv":            "1TO4jBqpD4_kfqG-JW3n7_w10PmTtQLWE",
+}
+
+def download_data_files():
+    for filename, file_id in DRIVE_FILES.items():
+        if not os.path.exists(filename):
+            with st.spinner(f"⬇️ Downloading {filename} from Google Drive…"):
+                session = requests.Session()
+                url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
+                response = session.get(url, stream=True)
+                # Handle Google's large-file virus-scan warning cookie
+                for key, value in response.cookies.items():
+                    if key.startswith("download_warning"):
+                        url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={value}"
+                        response = session.get(url, stream=True)
+                        break
+                with open(filename, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=32768):
+                        if chunk:
+                            f.write(chunk)
+                st.success(f"✅ {filename} ready!")
+
+download_data_files()
 
 # ── CSS theme ────────────────────────────────────────────────
 st.markdown("""
@@ -355,26 +385,15 @@ if not row.empty:
     weeks_test    = list(range(n_train, n_train + n_test))
 
     fig_fc = go.Figure()
-    fig_fc.add_trace(go.Scatter(
-        x=weeks_train, y=train_vals,
-        mode="lines", name="Historical", line=dict(color="#3b82f6", width=2),
-    ))
-    fig_fc.add_trace(go.Scatter(
-        x=weeks_test, y=test_vals,
-        mode="lines", name="Actual (test)", line=dict(color="#06b6d4", width=2),
-    ))
-    fig_fc.add_trace(go.Scatter(
-        x=weeks_test, y=fc_vals,
-        mode="lines", name="Ensemble Forecast",
-        line=dict(color="#10b981", width=2, dash="dash"),
-    ))
-    # CI band (±1 std of forecast)
+    fig_fc.add_trace(go.Scatter(x=weeks_train, y=train_vals, mode="lines", name="Historical", line=dict(color="#3b82f6", width=2)))
+    fig_fc.add_trace(go.Scatter(x=weeks_test, y=test_vals, mode="lines", name="Actual (test)", line=dict(color="#06b6d4", width=2)))
+    fig_fc.add_trace(go.Scatter(x=weeks_test, y=fc_vals, mode="lines", name="Ensemble Forecast", line=dict(color="#10b981", width=2, dash="dash")))
     fc_std = float(np.std(fc_vals)) if len(fc_vals) > 1 else 1.0
     fig_fc.add_trace(go.Scatter(
         x=weeks_test + weeks_test[::-1],
         y=[v + fc_std for v in fc_vals] + [v - fc_std for v in fc_vals][::-1],
         fill="toself", fillcolor="rgba(16,185,129,0.1)",
-        line=dict(color="rgba(0,0,0,0)"), name="±1σ CI", showlegend=True,
+        line=dict(color="rgba(0,0,0,0)"), name="±1σ CI",
     ))
     fig_fc.add_vline(x=n_train - 0.5, line_dash="dash", line_color="#475569",
                      annotation_text="Train / Test split", annotation_font_color="#94a3b8")
@@ -389,7 +408,6 @@ if not row.empty:
     fig_fc.update_xaxes(gridcolor="#1e2d4a"); fig_fc.update_yaxes(gridcolor="#1e2d4a")
     st.plotly_chart(fig_fc, use_container_width=True)
 
-    # Inventory metrics
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Safety Stock",    f"{row['safety_stock']:.1f} u")
     m2.metric("Reorder Point",   f"{row['reorder_point']:.1f} u")
@@ -407,23 +425,17 @@ if not sta_df.empty and not dyn_df.empty:
     sta_agg = sta_df.groupby("week")[["inventory","holding_cost","stockout","stockout_cost","total_cost"]].mean().reset_index()
     dyn_agg = dyn_df.groupby("week")[["inventory","holding_cost","stockout","stockout_cost","total_cost"]].mean().reset_index()
 
-    fig_sim = make_subplots(
-        rows=3, cols=1,
-        shared_xaxes=True,
+    fig_sim = make_subplots(rows=3, cols=1, shared_xaxes=True,
         subplot_titles=("Avg. Inventory Level (units)", "Weekly Holding Cost ($)", "Weekly Stockout Events"),
-        vertical_spacing=0.08,
-    )
+        vertical_spacing=0.08)
 
     for trace_data, name, color in [
-        (sta_agg, "Static Policy",           "#ef4444"),
-        (dyn_agg, "Forecast-Driven Policy",  "#10b981"),
+        (sta_agg, "Static Policy", "#ef4444"),
+        (dyn_agg, "Forecast-Driven Policy", "#10b981"),
     ]:
-        fig_sim.add_trace(go.Scatter(x=trace_data["week"], y=trace_data["inventory"],
-            name=name, line=dict(color=color, width=2), legendgroup=name), row=1, col=1)
-        fig_sim.add_trace(go.Scatter(x=trace_data["week"], y=trace_data["holding_cost"],
-            name=name, line=dict(color=color, width=2), showlegend=False, legendgroup=name), row=2, col=1)
-        fig_sim.add_trace(go.Scatter(x=trace_data["week"], y=trace_data["stockout"],
-            name=name, line=dict(color=color, width=2), showlegend=False, legendgroup=name), row=3, col=1)
+        fig_sim.add_trace(go.Scatter(x=trace_data["week"], y=trace_data["inventory"], name=name, line=dict(color=color, width=2), legendgroup=name), row=1, col=1)
+        fig_sim.add_trace(go.Scatter(x=trace_data["week"], y=trace_data["holding_cost"], name=name, line=dict(color=color, width=2), showlegend=False, legendgroup=name), row=2, col=1)
+        fig_sim.add_trace(go.Scatter(x=trace_data["week"], y=trace_data["stockout"], name=name, line=dict(color=color, width=2), showlegend=False, legendgroup=name), row=3, col=1)
 
     fig_sim.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
@@ -436,7 +448,6 @@ if not sta_df.empty and not dyn_df.empty:
         fig_sim.update_yaxes(gridcolor="#1e2d4a", row=i, col=1)
     st.plotly_chart(fig_sim, use_container_width=True)
 
-    # Cost summary bars
     col_cs1, col_cs2 = st.columns(2)
     with col_cs1:
         cost_comp = pd.DataFrame({
@@ -446,38 +457,28 @@ if not sta_df.empty and not dyn_df.empty:
                                     dyn_agg["stockout_cost"].sum() if "stockout_cost" in dyn_agg else 0],
         })
         fig_cost = go.Figure()
-        fig_cost.add_trace(go.Bar(name="Holding", x=cost_comp["Policy"], y=cost_comp["Total Holding Cost"],
-                                   marker_color="#3b82f6"))
-        fig_cost.add_trace(go.Bar(name="Stockout", x=cost_comp["Policy"], y=cost_comp["Total Stockout Cost"],
-                                   marker_color="#ef4444"))
-        fig_cost.update_layout(
-            barmode="stack", title="Cumulative Cost Breakdown",
+        fig_cost.add_trace(go.Bar(name="Holding", x=cost_comp["Policy"], y=cost_comp["Total Holding Cost"], marker_color="#3b82f6"))
+        fig_cost.add_trace(go.Bar(name="Stockout", x=cost_comp["Policy"], y=cost_comp["Total Stockout Cost"], marker_color="#ef4444"))
+        fig_cost.update_layout(barmode="stack", title="Cumulative Cost Breakdown",
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#94a3b8"), height=300,
-            legend=dict(bgcolor="rgba(0,0,0,0.3)"),
-            margin=dict(l=20, r=20, t=40, b=20),
-        )
+            legend=dict(bgcolor="rgba(0,0,0,0.3)"), margin=dict(l=20, r=20, t=40, b=20))
         fig_cost.update_xaxes(gridcolor="#1e2d4a"); fig_cost.update_yaxes(gridcolor="#1e2d4a")
         st.plotly_chart(fig_cost, use_container_width=True)
 
     with col_cs2:
         so_weekly = pd.DataFrame({
-            "Week":    sta_agg["week"],
-            "Static":  sta_agg["stockout"].cumsum(),
+            "Week": sta_agg["week"],
+            "Static": sta_agg["stockout"].cumsum(),
             "Forecast-Driven": dyn_agg["stockout"].cumsum(),
         })
         fig_cum = go.Figure()
-        fig_cum.add_trace(go.Scatter(x=so_weekly["Week"], y=so_weekly["Static"],
-            name="Static", line=dict(color="#ef4444", width=2)))
-        fig_cum.add_trace(go.Scatter(x=so_weekly["Week"], y=so_weekly["Forecast-Driven"],
-            name="Forecast-Driven", line=dict(color="#10b981", width=2)))
-        fig_cum.update_layout(
-            title="Cumulative Stockout Units",
+        fig_cum.add_trace(go.Scatter(x=so_weekly["Week"], y=so_weekly["Static"], name="Static", line=dict(color="#ef4444", width=2)))
+        fig_cum.add_trace(go.Scatter(x=so_weekly["Week"], y=so_weekly["Forecast-Driven"], name="Forecast-Driven", line=dict(color="#10b981", width=2)))
+        fig_cum.update_layout(title="Cumulative Stockout Units",
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
             font=dict(color="#94a3b8"), height=300,
-            legend=dict(bgcolor="rgba(0,0,0,0.3)"),
-            margin=dict(l=20, r=20, t=40, b=20),
-        )
+            legend=dict(bgcolor="rgba(0,0,0,0.3)"), margin=dict(l=20, r=20, t=40, b=20))
         fig_cum.update_xaxes(gridcolor="#1e2d4a"); fig_cum.update_yaxes(gridcolor="#1e2d4a")
         st.plotly_chart(fig_cum, use_container_width=True)
 
@@ -492,41 +493,24 @@ col7, col8 = st.columns([3, 2])
 with col7:
     if not fi_df.empty:
         fig_fi = go.Figure(go.Bar(
-            x=fi_df["importance"][:12],
-            y=fi_df["feature"][:12],
-            orientation="h",
-            marker=dict(
-                color=fi_df["importance"][:12],
-                colorscale=[[0, "#1e3a5f"], [0.5, "#3b82f6"], [1, "#06b6d4"]],
-            ),
+            x=fi_df["importance"][:12], y=fi_df["feature"][:12], orientation="h",
+            marker=dict(color=fi_df["importance"][:12], colorscale=[[0, "#1e3a5f"], [0.5, "#3b82f6"], [1, "#06b6d4"]]),
         ))
-        fig_fi.update_layout(
-            title="Top-12 Feature Importances (XGBoost)",
+        fig_fi.update_layout(title="Top-12 Feature Importances (XGBoost)",
             paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#94a3b8"), height=360,
-            yaxis=dict(autorange="reversed"),
-            margin=dict(l=20, r=20, t=40, b=20),
-        )
+            font=dict(color="#94a3b8"), height=360, yaxis=dict(autorange="reversed"),
+            margin=dict(l=20, r=20, t=40, b=20))
         fig_fi.update_xaxes(gridcolor="#1e2d4a"); fig_fi.update_yaxes(gridcolor="#1e2d4a")
         st.plotly_chart(fig_fi, use_container_width=True)
 
 with col8:
     fig_dist = go.Figure()
-    fig_dist.add_trace(go.Histogram(
-        x=res_df["safety_stock"], name="Safety Stock",
-        marker_color="#3b82f6", opacity=0.7, nbinsx=20,
-    ))
-    fig_dist.add_trace(go.Histogram(
-        x=res_df["reorder_point"], name="Reorder Point",
-        marker_color="#10b981", opacity=0.7, nbinsx=20,
-    ))
-    fig_dist.update_layout(
-        barmode="overlay", title="Safety Stock & ROP Distribution",
+    fig_dist.add_trace(go.Histogram(x=res_df["safety_stock"], name="Safety Stock", marker_color="#3b82f6", opacity=0.7, nbinsx=20))
+    fig_dist.add_trace(go.Histogram(x=res_df["reorder_point"], name="Reorder Point", marker_color="#10b981", opacity=0.7, nbinsx=20))
+    fig_dist.update_layout(barmode="overlay", title="Safety Stock & ROP Distribution",
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#94a3b8"), height=360,
-        legend=dict(bgcolor="rgba(0,0,0,0.3)"),
-        margin=dict(l=20, r=20, t=40, b=20),
-    )
+        legend=dict(bgcolor="rgba(0,0,0,0.3)"), margin=dict(l=20, r=20, t=40, b=20))
     fig_dist.update_xaxes(gridcolor="#1e2d4a", title="Units")
     fig_dist.update_yaxes(gridcolor="#1e2d4a", title="Count")
     st.plotly_chart(fig_dist, use_container_width=True)
@@ -538,33 +522,23 @@ with col8:
 st.markdown('<div class="section-header">07 — Product-Level Results Table</div>', unsafe_allow_html=True)
 
 display_cols = [
-    "product_id", "store_id", "unit_cost",
-    "mase", "rmse",
+    "product_id", "store_id", "unit_cost", "mase", "rmse",
     "safety_stock", "reorder_point", "order_qty",
     "holding_reduction_pct", "stockout_reduction_pct",
     "static_fill_rate", "dynamic_fill_rate",
 ]
-display_df = res_df[[c for c in display_cols if c in res_df.columns]].copy()
-display_df = display_df.round(3)
+display_df = res_df[[c for c in display_cols if c in res_df.columns]].copy().round(3)
 
 st.dataframe(
     display_df.style
-        .background_gradient(subset=["holding_reduction_pct", "stockout_reduction_pct"],
-                             cmap="RdYlGn", vmin=0, vmax=30)
+        .background_gradient(subset=["holding_reduction_pct", "stockout_reduction_pct"], cmap="RdYlGn", vmin=0, vmax=30)
         .format({
-            "unit_cost": "${:.2f}",
-            "mase": "{:.3f}",
-            "rmse": "{:.2f}",
-            "safety_stock": "{:.1f}",
-            "reorder_point": "{:.1f}",
-            "order_qty": "{:.1f}",
-            "holding_reduction_pct": "{:.1f}%",
-            "stockout_reduction_pct": "{:.1f}%",
-            "static_fill_rate": "{:.1%}",
-            "dynamic_fill_rate": "{:.1%}",
+            "unit_cost": "${:.2f}", "mase": "{:.3f}", "rmse": "{:.2f}",
+            "safety_stock": "{:.1f}", "reorder_point": "{:.1f}", "order_qty": "{:.1f}",
+            "holding_reduction_pct": "{:.1f}%", "stockout_reduction_pct": "{:.1f}%",
+            "static_fill_rate": "{:.1%}", "dynamic_fill_rate": "{:.1%}",
         }),
-    use_container_width=True,
-    height=400,
+    use_container_width=True, height=400,
 )
 
 # ── Footer ───────────────────────────────────────────────────
@@ -574,3 +548,4 @@ st.markdown("""
   Inventory Intelligence Platform · ARIMA + Holt-Winters + XGBoost Ensemble · M5 Forecasting Structure
 </div>
 """, unsafe_allow_html=True)
+
