@@ -154,7 +154,7 @@ with st.sidebar:
     st.markdown("🎯 Stockout reduction ≥ **20%**")
 
     st.divider()
-    run_btn = st.button("▶  Run Analysis", type="primary", use_container_width=True)
+    run_btn = st.button("▶  Run Analysis", type="primary", width='stretch')
 
 # ─────────────────────────────────────────────────────────────
 # ENGINE RUN
@@ -282,7 +282,8 @@ with col1:
     )
     fig_acc.update_xaxes(tickfont=dict(color="#94a3b8"), gridcolor="#1e2d4a")
     fig_acc.update_yaxes(tickfont=dict(color="#94a3b8"), gridcolor="#1e2d4a")
-    st.plotly_chart(fig_acc, use_container_width=True)
+    st.plotly_chart(fig_acc, 
+                    )
 
 with col2:
     st.markdown("**Ensemble Weights (avg)**")
@@ -306,7 +307,7 @@ with col2:
         margin=dict(l=20, r=20, t=10, b=10),
         annotations=[dict(text="Weights", x=0.5, y=0.5, font_size=13, font_color="#64748b", showarrow=False)],
     )
-    st.plotly_chart(fig_pie, use_container_width=True)
+    st.plotly_chart(fig_pie, width='stretch')
 
 # ─────────────────────────────────────────────────────────────
 # SECTION 3 — MASE vs INVENTORY SCATTER
@@ -336,7 +337,7 @@ with col3:
         margin=dict(l=20, r=20, t=40, b=20),
     )
     fig_sc.update_xaxes(gridcolor="#1e2d4a"); fig_sc.update_yaxes(gridcolor="#1e2d4a")
-    st.plotly_chart(fig_sc, use_container_width=True)
+    st.plotly_chart(fig_sc, width='stretch')
 
 with col4:
     fig_sc2 = px.scatter(
@@ -357,7 +358,7 @@ with col4:
         margin=dict(l=20, r=20, t=40, b=20),
     )
     fig_sc2.update_xaxes(gridcolor="#1e2d4a"); fig_sc2.update_yaxes(gridcolor="#1e2d4a")
-    st.plotly_chart(fig_sc2, use_container_width=True)
+    st.plotly_chart(fig_sc2, width='stretch')
 
 # ─────────────────────────────────────────────────────────────
 # SECTION 4 — PRODUCT DRILL-DOWN
@@ -406,7 +407,7 @@ if not row.empty:
         margin=dict(l=20, r=20, t=50, b=20),
     )
     fig_fc.update_xaxes(gridcolor="#1e2d4a"); fig_fc.update_yaxes(gridcolor="#1e2d4a")
-    st.plotly_chart(fig_fc, use_container_width=True)
+    st.plotly_chart(fig_fc, width='stretch')
 
     m1, m2, m3, m4, m5 = st.columns(5)
     m1.metric("Safety Stock",    f"{row['safety_stock']:.1f} u")
@@ -446,7 +447,7 @@ if not sta_df.empty and not dyn_df.empty:
     for i in range(1, 4):
         fig_sim.update_xaxes(gridcolor="#1e2d4a", row=i, col=1)
         fig_sim.update_yaxes(gridcolor="#1e2d4a", row=i, col=1)
-    st.plotly_chart(fig_sim, use_container_width=True)
+    st.plotly_chart(fig_sim, width='stretch')
 
     col_cs1, col_cs2 = st.columns(2)
     with col_cs1:
@@ -464,7 +465,7 @@ if not sta_df.empty and not dyn_df.empty:
             font=dict(color="#94a3b8"), height=300,
             legend=dict(bgcolor="rgba(0,0,0,0.3)"), margin=dict(l=20, r=20, t=40, b=20))
         fig_cost.update_xaxes(gridcolor="#1e2d4a"); fig_cost.update_yaxes(gridcolor="#1e2d4a")
-        st.plotly_chart(fig_cost, use_container_width=True)
+        st.plotly_chart(fig_cost, width='stretch')
 
     with col_cs2:
         so_weekly = pd.DataFrame({
@@ -480,7 +481,7 @@ if not sta_df.empty and not dyn_df.empty:
             font=dict(color="#94a3b8"), height=300,
             legend=dict(bgcolor="rgba(0,0,0,0.3)"), margin=dict(l=20, r=20, t=40, b=20))
         fig_cum.update_xaxes(gridcolor="#1e2d4a"); fig_cum.update_yaxes(gridcolor="#1e2d4a")
-        st.plotly_chart(fig_cum, use_container_width=True)
+        st.plotly_chart(fig_cum, width='stretch')
 
 # ─────────────────────────────────────────────────────────────
 # SECTION 6 — FEATURE IMPORTANCE & DISTRIBUTION
@@ -501,7 +502,7 @@ with col7:
             font=dict(color="#94a3b8"), height=360, yaxis=dict(autorange="reversed"),
             margin=dict(l=20, r=20, t=40, b=20))
         fig_fi.update_xaxes(gridcolor="#1e2d4a"); fig_fi.update_yaxes(gridcolor="#1e2d4a")
-        st.plotly_chart(fig_fi, use_container_width=True)
+        st.plotly_chart(fig_fi, width='stretch')
 
 with col8:
     fig_dist = go.Figure()
@@ -513,7 +514,7 @@ with col8:
         legend=dict(bgcolor="rgba(0,0,0,0.3)"), margin=dict(l=20, r=20, t=40, b=20))
     fig_dist.update_xaxes(gridcolor="#1e2d4a", title="Units")
     fig_dist.update_yaxes(gridcolor="#1e2d4a", title="Count")
-    st.plotly_chart(fig_dist, use_container_width=True)
+    st.plotly_chart(fig_dist, width='stretch')
 
 # ─────────────────────────────────────────────────────────────
 # SECTION 7 — RAW DATA TABLE
@@ -538,7 +539,7 @@ st.dataframe(
             "holding_reduction_pct": "{:.1f}%", "stockout_reduction_pct": "{:.1f}%",
             "static_fill_rate": "{:.1%}", "dynamic_fill_rate": "{:.1%}",
         }),
-    use_container_width=True, height=400,
+    width='stretch', height=400,
 )
 
 # ── Footer ───────────────────────────────────────────────────
